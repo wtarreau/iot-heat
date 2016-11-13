@@ -9,7 +9,7 @@ Global variables :
   heat_mqtt_host      : MQTT broker's IP address (default: none)
   heat_mqtt_port      : MQTT broker's TCP port (default: 1883)
   heat_mqtt           : the MQTT socket
-  heat_mqtt_connected : indicates if connected. true/false
+  heat_mqtt_state     : 0=disconnected, 1=connecting, 2=connected
   heat_node_alias     : common name for this device, defaults to heat_mqtt_id
   heat_node_room      : room this device is in, defaults to "home"
   heat_pwm_day        : pwm value to send during day (learned over MQTT)

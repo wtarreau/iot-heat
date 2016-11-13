@@ -8,6 +8,7 @@ heat_node_room=heat_node_room or "home"
 heat_node_alias=heat_node_alias or heat_mqtt_id
 heat_pwm_night=heat_pwm_night or 1023
 heat_pwm_day=heat_pwm_day or 1023
+heat_mqtt_state=0
 heat_light_cur=0
 
 local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias
@@ -29,19 +30,33 @@ function heat_light_state()
 end
 
 function heat_pub(t,v)
-  if heat_mqtt == nil or not heat_mqtt_connected then return nil end
+  if heat_mqtt == nil then return nil end
+  if heat_mqtt_state == 0 then heat_mqtt_reconnect() end
+  if heat_mqtt_state < 2 then return nil end
   heat_mqtt:publish(heat_mqtt_topic .. "/sts/" .. heat_mqtt_id .. t, v, 0, 1)
   return v
 end
 
 local function mqtt_connect_cb(s)
-  heat_mqtt_connected=true
+  heat_mqtt_state=2
   s:subscribe(heat_mqtt_topic .. "/cmd/" .. heat_mqtt_id .. "/+",0,nil)
   s:publish(heat_mqtt_topic .. "/sts/" .. heat_mqtt_id .. "/online", "1", 0, 1)
 end
 
+local function mqtt_fail_cb(s,r)
+  heat_mqtt_state=0
+end
+
 local function mqtt_disconnect_cb(s)
-  heat_mqtt_connected=false
+  heat_mqtt_state=0
+end
+
+function heat_mqtt_reconnect()
+  if heat_mqtt_host == nil then heat_mqtt_state = 0 return end
+  if heat_mqtt_state > 0 then return end
+  if heat_mqtt:connect(heat_mqtt_host, heat_mqtt_port, 0, 1, mqtt_connect_cb, mqtt_fail_cb) then
+    heat_mqtt_state = 1
+  end
 end
 
 local function mqtt_message_cb(s,t,v)
@@ -61,7 +76,7 @@ heat_mqtt:lwt(heat_mqtt_topic .. "/sts/" .. heat_mqtt_id .. "/online", "", 0, 1)
 heat_mqtt:on("message", mqtt_message_cb)
 heat_mqtt:on("offline", mqtt_disconnect_cb)
 
-heat_mqtt:connect(heat_mqtt_host, heat_mqtt_port, 0, 1, mqtt_connect_cb, nil)
+heat_mqtt_reconnect()
 
 tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   heat_light_cur=heat_read_light()
