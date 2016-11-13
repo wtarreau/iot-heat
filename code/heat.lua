@@ -6,19 +6,28 @@ heat_mqtt_id=heat_mqtt_id or node.chipid()
 heat_mqtt_port=heat_mqtt_port or 1883
 heat_node_room=heat_node_room or "home"
 heat_node_alias=heat_node_alias or heat_mqtt_id
+heat_light_cur=0
+
+local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias
 
 function heat_read_light()
   gpio.mode(0,0); gpio.mode(5,1); gpio.write(5,0); return adc.read(0);
 end
 
+function heat_light_state()
+  return (heat_light_cur >= heat_light_lim) and 1 or 0
+end
+
 function heat_pub(t,v)
-  if heat_mqtt == nil or not heat_mqtt_connected then return end
+  if heat_mqtt == nil or not heat_mqtt_connected then return nil end
   heat_mqtt:publish(heat_mqtt_topic .. "/sts/" .. heat_mqtt_id .. t, v, 0, 1)
+  return v
 end
 
 local function mqtt_connect_cb(s)
   heat_mqtt_connected=true
   s:subscribe(heat_mqtt_topic .. "/cmd/" .. heat_mqtt_id .. "/+",0,nil)
+  s:publish(heat_mqtt_topic .. "/sts/" .. heat_mqtt_id .. "/online", "1", 0, 1)
 end
 
 local function mqtt_disconnect_cb(s)
@@ -46,11 +55,10 @@ heat_mqtt:connect(heat_mqtt_host, heat_mqtt_port, 0, 1, mqtt_connect_cb, nil)
 
 tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   heat_light_cur=heat_read_light()
-  heat_pub("/light_cur", heat_light_cur)
-  heat_pub("/light_lim", heat_light_lim)
-  heat_pub("/light_state", ((heat_light_cur >= heat_light_lim) and 1 or 0)
-  heat_pub("/room", heat_node_room)
-  heat_pub("/alias", heat_node_alias)
-  heat_pub("/online", "1")
+  if cache_light_cur ~= heat_light_cur then cache_light_cur = heat_pub("/light_cur", heat_light_cur) end
+  if cache_light_lim ~= heat_light_lim then cache_light_lim = heat_pub("/light_lim", heat_light_lim) end
+  if cache_light_state ~= heat_light_state() then cache_light_state = heat_pub("/light_state", heat_light_state()) end
+  if cache_node_room ~= heat_node_room then cache_node_room = heat_pub("/room", heat_node_room) end
+  if cache_node_alias ~= heat_node_alias then cache_node_alias = heat_pub("/alias", heat_node_alias) end
   tmr.start(heat_timer_num)
 end)
