@@ -1,0 +1,32 @@
+Global variables :
+  heat_light_cur      : last measure of the light value (0..1023)
+  heat_light_lim      : limit between day and night (0..1023, default: 685)
+  heat_timer_num      : timer number (default: 1)
+  heat_timer_int      : timer interval (default: 1000)
+  heat_mqtt_topic     : MQTT topix prefix (default: "/heat")
+  heat_mqtt_idpfx     : MQTT client ID prefix for connect() (default: "")
+  heat_mqtt_id        : MQTT client ID (default: chipid())
+  heat_mqtt_host      : MQTT broker's IP address (default: none)
+  heat_mqtt_port      : MQTT broker's TCP port (default: 1883)
+  heat_mqtt           : the MQTT socket
+  heat_mqtt_connected : indicates if connected. true/false
+  heat_node_alias     : common name for this device, defaults to heat_mqtt_id
+  heat_node_room      : room this device is in, defaults to "home"
+  heat_pwm_day        : pwm value to send during day (learned over MQTT)
+  heat_pwm_night      : pwm value to send during night (learned over MQTT)
+
+MQTT publications :
+  [topic]/sts/<id>/light_cur    : 0..1023
+  [topic]/sts/<id>/light_lim    : 0..1023
+  [topic]/sts/<id>/light_state  : 0..1
+  [topic]/sts/<id>/room         : string
+  [topic]/sts/<id>/alias        : string
+  [topic]/sts/<id>/online       : 1, or absent if disconnected
+
+MQTT subscription :
+  [topic]/cmd/<id>/pwm_day   : 0..1023
+  [topic]/cmd/<id>/pwm_night : 0..1023
+  [topic]/cmd/<id>/light_lim : 0..1023
+
+The other end just has to subscribe to '/heat/sts/#' to receive all messages.
+Note that when doing an explicit heat_mqtt:close(), the lwt is not applied.
