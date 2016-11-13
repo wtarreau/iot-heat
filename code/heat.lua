@@ -6,12 +6,22 @@ heat_mqtt_id=heat_mqtt_id or node.chipid()
 heat_mqtt_port=heat_mqtt_port or 1883
 heat_node_room=heat_node_room or "home"
 heat_node_alias=heat_node_alias or heat_mqtt_id
+heat_pwm_night=heat_pwm_night or 1023
+heat_pwm_day=heat_pwm_day or 1023
 heat_light_cur=0
 
 local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias
 
 function heat_read_light()
-  gpio.mode(0,0); gpio.mode(5,1); gpio.write(5,0); return adc.read(0);
+  gpio.mode(0,0)
+  gpio.mode(5,1)
+  gpio.write(5,0)
+  return adc.read(0)
+end
+
+function heat_set_pwm(v)
+  pwm.setup(7,1000,v)
+  pwm.start(7)
 end
 
 function heat_light_state()
@@ -55,6 +65,7 @@ heat_mqtt:connect(heat_mqtt_host, heat_mqtt_port, 0, 1, mqtt_connect_cb, nil)
 
 tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   heat_light_cur=heat_read_light()
+  heat_set_pwm((heat_light_state() > 0) and heat_pwm_day or heat_pwm_night)
   if cache_light_cur ~= heat_light_cur then cache_light_cur = heat_pub("/light_cur", heat_light_cur) end
   if cache_light_lim ~= heat_light_lim then cache_light_lim = heat_pub("/light_lim", heat_light_lim) end
   if cache_light_state ~= heat_light_state() then cache_light_state = heat_pub("/light_state", heat_light_state()) end
