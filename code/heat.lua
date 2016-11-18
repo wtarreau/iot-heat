@@ -17,7 +17,7 @@ function heat_read_light()
   gpio.mode(0,0)
   gpio.mode(5,1)
   gpio.write(5,0)
-  return adc.read(0)
+  heat_light_cur=adc.read(0)
 end
 
 function heat_set_pwm(v)
@@ -79,7 +79,7 @@ heat_mqtt:on("offline", mqtt_disconnect_cb)
 heat_mqtt_reconnect()
 
 tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
-  heat_light_cur=heat_read_light()
+  heat_read_light()
   heat_set_pwm((heat_light_state() > 0) and heat_pwm_day or heat_pwm_night)
   if cache_light_cur ~= heat_light_cur then cache_light_cur = heat_pub("/light_cur", heat_light_cur) end
   if cache_light_lim ~= heat_light_lim then cache_light_lim = heat_pub("/light_lim", heat_light_lim) end
