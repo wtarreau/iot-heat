@@ -10,8 +10,22 @@ heat_pwm_night=heat_pwm_night or 1023
 heat_pwm_day=heat_pwm_day or 1023
 heat_mqtt_state=0
 heat_light_cur=0
+heat_temp_cur=0
+heat_humi_cur=0
 
 local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias
+
+function heat_read_temp()
+  local status, temp, humi
+  status,temp,humi=dht.readxx(4)
+  if status ~= dht.OK then
+    status,temp,humi=dht.readxx(4)
+  end
+  if status == dht.OK then
+    heat_temp_cur=temp
+    heat_humi_cur=humi
+  end
+end
 
 function heat_read_light()
   gpio.mode(0,0)
@@ -80,6 +94,7 @@ heat_mqtt_reconnect()
 
 tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   heat_read_light()
+  heat_read_temp()
   heat_set_pwm((heat_light_state() > 0) and heat_pwm_day or heat_pwm_night)
   if cache_light_cur ~= heat_light_cur then cache_light_cur = heat_pub("/light_cur", heat_light_cur) end
   if cache_light_lim ~= heat_light_lim then cache_light_lim = heat_pub("/light_lim", heat_light_lim) end
