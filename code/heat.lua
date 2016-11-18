@@ -1,4 +1,4 @@
-heat_light_lim=heat_light_lim or 685
+heat_light_lim=heat_light_lim or 100
 heat_timer_num=heat_timer_num or 1
 heat_timer_int=heat_timer_int or 1000
 heat_mqtt_topic=heat_mqtt_topic or "/heat"
