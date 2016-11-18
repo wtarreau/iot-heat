@@ -13,7 +13,7 @@ heat_light_cur=0
 heat_temp_cur=0
 heat_humi_cur=0
 
-local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias
+local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias, cache_temp_cur, cache_humi_cur
 
 function heat_read_temp()
   local status, temp, humi
@@ -99,6 +99,8 @@ tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   if cache_light_cur ~= heat_light_cur then cache_light_cur = heat_pub("/light_cur", heat_light_cur) end
   if cache_light_lim ~= heat_light_lim then cache_light_lim = heat_pub("/light_lim", heat_light_lim) end
   if cache_light_state ~= heat_light_state() then cache_light_state = heat_pub("/light_state", heat_light_state()) end
+  if cache_temp_cur ~= heat_temp_cur then cache_temp_cur = heat_pub("/temp_cur", heat_temp_cur) end
+  if cache_humi_cur ~= heat_humi_cur then cache_humi_cur = heat_pub("/humi_cur", heat_humi_cur) end
   if cache_node_room ~= heat_node_room then cache_node_room = heat_pub("/room", heat_node_room) end
   if cache_node_alias ~= heat_node_alias then cache_node_alias = heat_pub("/alias", heat_node_alias) end
   tmr.start(heat_timer_num)
