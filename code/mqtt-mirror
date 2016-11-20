@@ -1,0 +1,81 @@
+#!/bin/bash
+
+MQTT_HOST=${MQTT_HOST:-}
+MQTT_PORT=${MQTT_HOST:-1883}
+MQTT_TREE=${MQTT_TREE:-}
+MQTT_TOPICS=( ${MQTT_TOPICS[@]} )
+VERBOSE=
+DAEMON=
+
+# displays usage message and exits with code $1
+usage() {
+	echo "MQTT-Mirror 0.1 - filesystem mirror for MQTT topics."
+	echo "Usage: ${0##*/} { options }"
+	echo "Valid options :"
+	echo "  -h <host>  : set MQTT host [$MQTT_HOST]"
+	echo "  -p <port>  : set MQTT port [$MQTT_PORT]"
+	echo "  -d <dir>   : set MQTT directory tree [$MQTT_TREE]"
+	echo "  -t <topic> : add this MQTT topic [${MQTT_TOPICS[*]}]"
+	echo "  -D         : fork in the background"
+	echo "  -v         : show all received MQTT messages"
+	echo "  --help     : show this help and exit"
+	exit $1
+}
+
+subscribe() {
+	mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" ${MQTT_TOPICS[*]/#/-t } -v | \
+	while read topic value; do
+		if [ -n "$topic" -a -z "${topic##/*}" -a -n "${topic##*/..*}" ]; then
+			rm -f "$MQTT_TREE/$topic"
+			if [ "$value" != "(null)" ]; then
+				mkdir -p "$MQTT_TREE/${topic%/*}"
+				echo "$value" > "$MQTT_TREE/$topic"
+			fi
+		fi
+		[ -n "$VERBOSE" ] && echo topic=$topic value=$value
+	done
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		"-h") MQTT_HOST="$2"; shift ;;
+		"-p") MQTT_PORT="$2"; shift ;;
+		"-d") MQTT_TREE="$2"; shift ;;
+		"-t") MQTT_TOPICS[${#MQTT_TOPICS[@]}]="$2"; shift ;;
+		"-v") VERBOSE=1 ;;
+		"-D") DAEMON=1 ;;
+		"--help") usage 0 ;;
+		*) usage 1 ;;
+	esac
+	shift
+done
+
+[ -n "$MQTT_HOST" ] || usage 1
+[ -n "$MQTT_PORT" ] || usage 1
+[ -n "$MQTT_TREE" ] || usage 1
+
+if [ ! -d "$MQTT_TREE/" ]; then
+	echo "Fatal: $MQTT_TREE is not a valid directory"
+	exit 1
+fi
+
+if [ ${#MQTT_TOPICS[@]} -eq 0 ]; then
+	MQTT_TOPICS=("#")
+fi
+
+if [ "${MQTT_TOPICS[*]// /}" != "${MQTT_TOPICS[*]}" ]; then
+	echo "Fatal: MQTT topics cannot contain spaces"
+	exit 1
+fi
+
+if [ -z "$DAEMON" ]; then
+	while subscribe; do
+		sleep 5
+	done
+else
+	VERBOSE=
+	while subscribe; do
+		sleep 5
+	done </dev/null >&0 2>&0 &
+	disown
+fi
