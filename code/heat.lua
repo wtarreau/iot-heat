@@ -12,6 +12,7 @@ heat_mqtt_state=0
 heat_light_cur=0
 heat_temp_cur=0
 heat_humi_cur=0
+heat_fast_left=0
 heat_prof_cur="NORMAL"
 heat_env_state="ATHOME"
 
@@ -47,6 +48,7 @@ end
 function heat_compute_profile()
   local state=heat_env_state
   local profile_name
+  local prev_prof=heat_prof_cur
 
   if     state==nil      then state="ATHOME"
   elseif state=="WAKEUP" then state="MORNING"
@@ -57,6 +59,13 @@ function heat_compute_profile()
     heat_prof_cur="NORMAL"
   else
     heat_prof_cur=_G[profile_name]
+  end
+
+  if heat_prof_cur == "ECO" then
+    heat_fast_left=(heat_fast_left < 1000) and (heat_fast_left+1) or 1000
+  elseif heat_fast_left > 0 then
+    heat_fast_left=heat_fast_left-1
+    heat_prof_cur="FAST"
   end
 end
 
