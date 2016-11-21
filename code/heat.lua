@@ -70,11 +70,15 @@ function heat_compute_profile()
 end
 
 function heat_compute_pwm()
+  local ret
   if _G["heat_pwm_"..heat_prof_cur]==nil then
-    return 500
+    ret=500
   else
-    return _G["heat_pwm_"..heat_prof_cur]
+    ret=_G["heat_pwm_"..heat_prof_cur]
   end
+  if heat_humi_cur < 70 then return ret end
+  if heat_prof_cur == "ECO" then return ret end
+  return (ret >= 100) and (ret - 100) or 0
 end
 
 function heat_pub(t,v)
