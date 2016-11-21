@@ -28,9 +28,6 @@ function heat_read_temp()
 end
 
 function heat_read_light()
-  gpio.mode(0,0)
-  gpio.mode(5,1)
-  gpio.write(5,0)
   heat_light_cur=adc.read(0)
 end
 
