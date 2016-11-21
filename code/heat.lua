@@ -14,6 +14,8 @@ heat_temp_cur=0
 heat_humi_cur=0
 heat_env_state="ATHOME"
 
+if file.exists("cfg/heat-cfg.lua") then dofile("cfg/heat-cfg.lua") end
+
 local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias, cache_temp_cur, cache_humi_cur
 
 function heat_read_temp()
