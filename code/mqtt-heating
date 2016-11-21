@@ -98,6 +98,8 @@ update() {
 		elif [ "$state" = AWAY ]; then
 			if [ $tod -ge $RETURN_TIME ]; then
 				state=BACK
+			elif [ -e /tmp/returning ]; then
+				state=BACK
 			elif [ $light != 0 ]; then
 				state=ATHOME
 			fi
@@ -114,6 +116,7 @@ update() {
 				state=EVENING
 			fi
 		elif [ "$state" = EVENING ]; then
+			rm -f /tmp/returning
 			if [ $tod -ge $BED_TIME -o $tod -lt $PREHEAT_TIME ]; then
 				state=TOBED
 			elif [ $tod -lt $LEAVE_TIME -a $tod -ge $PREHEAT_TIME ]; then
