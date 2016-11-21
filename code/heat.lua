@@ -12,6 +12,7 @@ heat_mqtt_state=0
 heat_light_cur=0
 heat_temp_cur=0
 heat_humi_cur=0
+heat_env_state="ATHOME"
 
 local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias, cache_temp_cur, cache_humi_cur
 
@@ -50,7 +51,10 @@ end
 
 local function mqtt_connect_cb(s)
   heat_mqtt_state=2
-  s:subscribe(heat_mqtt_topic .. "/cmd/" .. heat_mqtt_id .. "/+",0,nil)
+  s:subscribe({
+    [heat_mqtt_topic .. "/env/+"]=0,
+    [heat_mqtt_topic .. "/cmd/" .. heat_mqtt_id .. "/+"]=0},
+    nil)
   s:publish(heat_mqtt_topic .. "/sts/" .. heat_mqtt_id .. "/online", "1", 0, 1)
 end
 
@@ -73,6 +77,10 @@ end
 local function mqtt_message_cb(s,t,v)
   local pfxlen=string.len(heat_mqtt_topic)+string.len(heat_mqtt_id)+6
   local name=t:sub(pfxlen+1)
+
+  --print("topic " .. t .. " value " .. v)
+  if t == heat_mqtt_topic .. "/env/state" then heat_env_state=v end
+
   if t:sub(1,pfxlen) ~= heat_mqtt_topic .. "/cmd/" .. heat_mqtt_id .. "/" then return end
   if v == nil then return end
 
