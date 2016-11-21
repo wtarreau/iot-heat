@@ -1,0 +1,174 @@
+#!/bin/bash
+
+MQTT_HOST=${MQTT_HOST:-}
+MQTT_PORT=${MQTT_HOST:-1883}
+MQTT_TREE=${MQTT_TREE:-}
+MQTT_TOPIC=${MQTT_TOPIC:-/heat}
+
+LIGHT_IDS=( 1010128 171735 167595 )
+PREHEAT_TIME=630
+WAKEUP_TIME=700
+LEAVE_TIME=0930
+RETURN_TIME=2100
+EVENING_TIME=1700
+BED_TIME=2300
+VERBOSE=
+DAEMON=
+
+curr_state=
+
+# displays usage message and exits with code $1
+usage() {
+	echo "MQTT-heat 0.1 - update remote heating status."
+	echo "Usage: ${0##*/} { options }"
+	echo "Valid options :"
+	echo "  -h <host>  : set MQTT host [$MQTT_HOST]"
+	echo "  -p <port>  : set MQTT port [$MQTT_PORT]"
+	echo "  -d <dir>   : set MQTT directory tree [$MQTT_TREE]"
+	echo "  -t <topic> : set the root MQTT topic [$MQTT_TOPIC]"
+	echo "  -D         : fork in the background"
+	echo "  -v         : show all received MQTT messages"
+	echo "  --help     : show this help and exit"
+	exit $1
+}
+
+# returns time of day as DHHMM, allowing easy comparison, because D is
+# between 1 and 7 (mon to sun). The value is returned in $REPLY.
+get_tod() {
+	REPLY=$(date +%u%H%M)
+}
+
+# returns the moment of the day (MORNING, DAY, EVENING) in $REPLY for the date
+# in $1 or calls get_tod() to get it if empty.
+get_moment() {
+	REPLY=$1
+	[ -n "$REPLY" ] || get_tod
+	REPLY=$((REPLY%10000))
+	if [ $REPLY -ge 400 -a $REPLY -lt 900 ]; then
+		REPLY="MORNING"
+	elif [ $REPLY -ge 900 -a $REPLY -lt 1700 ]; then
+		REPLY="DAY"
+	else
+		REPLY="EVENING"
+	fi
+}
+
+update() {
+	local day
+	local tod
+	local moment
+	local light
+	local state prev last
+
+	get_tod; tod=$REPLY
+	day=$((tod/10000)); tod=$((tod%10000))
+	get_moment $tod; moment=$REPLY
+
+	# check for light in living rooms
+	light=0
+	for i in ${LIGHT_IDS[@]}; do
+		[ -e "$MQTT_TREE/$MQTT_TOPIC/sts/$i/online" ] || continue
+		[ -r "$MQTT_TREE/$MQTT_TOPIC/sts/$i/light_state" ] || continue
+		[ "$(< "$MQTT_TREE/$MQTT_TOPIC/sts/$i/light_state")" == "0" ] || light=1
+	done
+
+	state="${curr_state:-NIGHT}"
+	prev="$state"
+	last=""
+	while [ "$state" != "$last" ]; do
+		last="$state"
+		if [ "$state" = NIGHT ]; then
+			if [ $tod -ge $PREHEAT_TIME -a $light = 0 ]; then
+				state=WAKEUP
+			elif [ "$moment" = MORNING -a $light != 0 ]; then
+				state=MORNING
+			elif [ "$moment" = DAY -a $light != 0 ]; then
+				state=MORNING
+			fi
+		elif [ "$state" = WAKEUP ]; then
+			if [ $tod -ge $PREHEAT_TIME -o $light != 0 ]; then
+				state=MORNING
+			fi
+		elif [ "$state" = MORNING ]; then
+			if [ $tod -ge $LEAVE_TIME -a $light = 0 ]; then
+				state=AWAY
+			elif [ $tod -ge $LEAVE_TIME -a $light != 0 ]; then
+				state=ATHOME
+			fi
+		elif [ "$state" = AWAY ]; then
+			if [ $tod -ge $RETURN_TIME ]; then
+				state=BACK
+			elif [ $light != 0 ]; then
+				state=ATHOME
+			fi
+		elif [ "$state" = ATHOME ]; then
+			if [ $tod -ge $BED_TIME -o $tod -lt $PREHEAT_TIME ]; then
+				state=TOBED
+			elif [ $tod -ge $EVENING_TIME ]; then
+				state=EVENING
+			elif [ $light = 0 ]; then
+				state=AWAY
+			fi
+		elif [ "$state" = BACK ]; then
+			if [ $light != 0 ]; then
+				state=EVENING
+			fi
+		elif [ "$state" = EVENING ]; then
+			if [ $tod -ge $BED_TIME -o $tod -lt $PREHEAT_TIME ]; then
+				state=TOBED
+			fi
+		elif [ "$state" = TOBED ]; then
+			if [ $light = 0 ]; then
+				state=NIGHT
+			fi
+		fi
+	done
+
+	[ -n "$VERBOSE" ] && echo "day=$day tod=$tod light=$light moment=$moment prev=$prev state=$state"
+
+	curr_state="$state"
+
+	mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -t "$MQTT_TOPIC/env/state" -m "$state"
+	mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -t "$MQTT_TOPIC/env/moment" -m "$moment"
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		"-h") MQTT_HOST="$2"; shift ;;
+		"-p") MQTT_PORT="$2"; shift ;;
+		"-d") MQTT_TREE="$2"; shift ;;
+		"-t") MQTT_TOPIC="$2"; shift ;;
+		"-v") VERBOSE=1 ;;
+		"-D") DAEMON=1 ;;
+		"--help") usage 0 ;;
+		*) usage 1 ;;
+	esac
+	shift
+done
+
+[ -n "$MQTT_HOST" ] || usage 1
+[ -n "$MQTT_PORT" ] || usage 1
+[ -n "$MQTT_TREE" ] || usage 1
+[ -n "$MQTT_TOPIC" ] || usage 1
+
+if [ ! -d "$MQTT_TREE/" ]; then
+	echo "Fatal: $MQTT_TREE is not a valid directory"
+	exit 1
+fi
+
+#if ! mkdir -p "$MQTT_TREE/$MQTT_TOPIC/env" ]; then
+#	echo "Fatal: cannot create directory $MQTT_TREE/$MQTT_TOPIC/env."
+#	exit 1
+#fi
+
+if [ -z "$DAEMON" ]; then
+	while update; do
+		sleep 5
+	done
+else
+	VERBOSE=
+	while update; do
+		sleep 5
+	done </dev/null >&0 2>&0 &
+	disown
+fi
