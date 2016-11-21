@@ -12,6 +12,7 @@ heat_mqtt_state=0
 heat_light_cur=0
 heat_temp_cur=0
 heat_humi_cur=0
+heat_prof_cur="NORMAL"
 heat_env_state="ATHOME"
 
 if file.exists("cfg/heat-cfg.lua") then dofile("cfg/heat-cfg.lua") end
@@ -41,6 +42,30 @@ end
 
 function heat_light_state()
   return (heat_light_cur >= heat_light_lim) and 1 or 0
+end
+
+function heat_compute_profile()
+  local state=heat_env_state
+  local profile_name
+
+  if     state==nil      then state="ATHOME"
+  elseif state=="WAKEUP" then state="MORNING"
+  elseif state=="BACK"   then state="EVENING"
+  end
+  profile_name="heat_p_" .. state .. ((heat_light_state() > 0) and "_LIT" or "_DRK")
+  if _G[profile_name]==nil then
+    heat_prof_cur="NORMAL"
+  else
+    heat_prof_cur=_G[profile_name]
+  end
+end
+
+function heat_compute_pwm()
+  if _G["heat_pwm_"..heat_prof_cur]==nil then
+    return 500
+  else
+    return _G["heat_pwm_"..heat_prof_cur]
+  end
 end
 
 function heat_pub(t,v)
@@ -102,10 +127,13 @@ heat_mqtt_reconnect()
 tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   heat_read_light()
   heat_read_temp()
-  heat_set_pwm((heat_light_state() > 0) and heat_pwm_day or heat_pwm_night)
+  heat_compute_profile()
+  heat_set_pwm(heat_compute_pwm())
+
   if cache_light_cur ~= heat_light_cur then cache_light_cur = heat_pub("/light_cur", heat_light_cur) end
   if cache_light_lim ~= heat_light_lim then cache_light_lim = heat_pub("/light_lim", heat_light_lim) end
   if cache_light_state ~= heat_light_state() then cache_light_state = heat_pub("/light_state", heat_light_state()) end
+  if cache_prof_cur ~= heat_prof_cur then cache_prof_cur = heat_pub("/prof_cur", heat_prof_cur) end
   if cache_temp_cur ~= heat_temp_cur then cache_temp_cur = heat_pub("/temp_cur", heat_temp_cur) end
   if cache_humi_cur ~= heat_humi_cur then cache_humi_cur = heat_pub("/humi_cur", heat_humi_cur) end
   if cache_node_room ~= heat_node_room then cache_node_room = heat_pub("/room", heat_node_room) end
