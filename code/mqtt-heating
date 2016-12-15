@@ -84,12 +84,16 @@ update() {
 				state=MORNING
 			elif [ "$moment" = DAY -a $light != 0 ]; then
 				state=MORNING
+			elif [ -e /tmp/returning ]; then
+				state=BACK
 			fi
 		elif [ "$state" = WAKEUP ]; then
+			rm -f /tmp/returning
 			if [ $tod -lt $BED_TIME -a $tod -ge $PREHEAT_TIME -o $light != 0 ]; then
 				state=MORNING
 			fi
 		elif [ "$state" = MORNING ]; then
+			rm -f /tmp/returning
 			if [ $tod -ge $LEAVE_TIME -a $light = 0 ]; then
 				state=AWAY
 			elif [ $tod -ge $LEAVE_TIME -a $light != 0 ]; then
@@ -104,6 +108,7 @@ update() {
 				state=ATHOME
 			fi
 		elif [ "$state" = ATHOME ]; then
+			rm -f /tmp/returning
 			if [ $tod -ge $BED_TIME -o $tod -lt $PREHEAT_TIME ]; then
 				state=TOBED
 			elif [ $tod -ge $EVENING_TIME ]; then
@@ -113,7 +118,13 @@ update() {
 			fi
 		elif [ "$state" = BACK ]; then
 			if [ $light != 0 ]; then
-				state=EVENING
+				if [ $tod -ge $BED_TIME -o $tod -lt $PREHEAT_TIME ]; then
+					state=TOBED
+				elif [ $tod -ge $EVENING_TIME ]; then
+					state=EVENING
+				else
+					state=ATHOME
+				fi
 			fi
 		elif [ "$state" = EVENING ]; then
 			rm -f /tmp/returning
@@ -123,6 +134,7 @@ update() {
 				state=MORNING
 			fi
 		elif [ "$state" = TOBED ]; then
+			rm -f /tmp/returning
 			if [ $light = 0 ]; then
 				state=NIGHT
 			fi
