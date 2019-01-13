@@ -1,0 +1,13 @@
+For the setup, two scripts have to be started :
+
+  ./code/mqtt-mirror -h $MQTT_SERVER -d /var/state/mqtt -D
+  ./code/mqtt-heating -h $MQTT_SERVER -d /var/state/mqtt -D
+
+It's important to note that some shells leak memory so it's worth checking the
+memory usage from time to time and possibly restart these.
+
+All the configuration is in mqtt-heating. The LIGHT_IDS array contain the list
+of devices whose light status indicates presence (typically those with a light
+or with flaps open only when someone is present). All the timers are expressed
+as HHMM for hours and minutes.
+
