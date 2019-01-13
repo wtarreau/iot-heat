@@ -1,0 +1,4 @@
+heat_mqtt_host="192.168.13.254"
+heat_node_room="living"
+heat_node_alias="corner"
+heat_light_lim=350
