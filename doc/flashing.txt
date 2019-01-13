@@ -1,0 +1,92 @@
+The central heating controller requires a node-mcu firmware version 1.5.4.1
+or higher from https://nodemcu-build.com/. Since it doesn't use much memory
+it's possible to enable lots of modules and to keep floats.
+
+The currently used version was tested with 1.5.4.1 and the following modules :
+  adc,bit,cjson,crypto,dht,encoder,enduser_setup,file,gpio,http,i2c,
+  mqtt,net,node,ow,pwm,rtcmem,rtctime,sntp,spi,tmr,u8g,uart,wifi,tls
+
+Modules cjson, enduser_setup, http, ow, rtcmem, rtctime, sntp, spi and u8g were
+only added during development and are not used in the end.
+
+Please check the iot-core project for setup instructions.
+
+For ESP-12E:
+  python tools/esptool.py --port /dev/ttyUSB0 erase_flash
+  python tools/esptool.py --port /dev/ttyUSB0 --baud 115200 write_flash -ff 40m -fs 32m -fm dio  0x000000 nodemcu-1.5.4.1-final-25-modules-2017-08-13-08-41-21-float.bin 0x3fc000 esp_init_data_default.bin
+
+For ESP8285:
+  python tools/esptool.py --port /dev/ttyUSB0 erase_flash
+  python tools/esptool.py --port /dev/ttyUSB0 --baud 115200 write_flash -ff 80m -fs  8m -fm dout 0x000000 nodemcu-1.5.4.1-final-25-modules-2017-08-13-08-41-21-float.bin 0x0fc000 esp_init_data_default.bin
+
+Note that verify always says that the first image doesn't verify, this is
+because bytes 2 and 3 are affected by -fs, -fm and -ff.
+
+Upon next boot, be sure not to assert DTR (or unplug it). The terminal must be
+configured to 115200 bauds. It remains silent for about one minute, the time
+needed to format the file system. Then the lua interpreter boots and says it
+cannot open init.lua.
+
+It is then possible to flash all files using luatool.py. This one defaults to a
+USB tty but it can be changed and even works over TCP. Some delay is required
+to avoid losing characters depending on the speed. 0.02 is OK at 115200 and
+over telnet, but 74880 requires 0.03. When the ESP8285 goes crazy, it might
+require to be reflashed using 74880 bauds.
+
+  #PORT="-p /dev/ttyUSB0 -b 74880 --delay 0.03"
+  #PORT="--ip 192.168.10.10:23 --delay 0.02"
+  PORT="-p /dev/ttyUSB0 -b 115200 --delay 0.02"
+
+Then it's required to flash the core files. Here, "core" is a symlink to the
+location where the iot-core package was extracted, and "tools" is a symlink to
+the luatool repository (https://github.com/4refr0nt/luatool) :
+
+  python tools/luatool.py $PORT    -f core/boot/init.lua
+  python tools/luatool.py $PORT -c -f core/boot/nodemcu.lua
+  python tools/luatool.py $PORT -c -f core/boot/socket.lua
+  python tools/luatool.py $PORT -c -f core/boot/netsetup.lua
+
+  python tools/luatool.py $PORT -c -f core/firmware/firmware-1.5.4.1.lua -t firmware.lua
+
+  python tools/luatool.py $PORT -c -f core/lib/show.lua      -t lib/01-show.lua
+  python tools/luatool.py $PORT -c -f core/lib/cat.lua       -t lib/02-cat.lua
+  python tools/luatool.py $PORT -c -f core/lib/debounce.lua  -t lib/04-debounce.lua
+
+  python tools/luatool.py $PORT -c -f core/svc/recovery.lua  -t svc/02-recovery.lua
+  python tools/luatool.py $PORT -c -f core/svc/telnet.lua    -t svc/20-telnet.lua
+
+The board configuration is required to assign pins :
+
+  python tools/luatool.py $PORT -c -f code/board.lua -t board.lua
+
+The network and system configuration needs to be uploaded. For this, it is
+required to copy one of the "*.lua.sample" files from the conf directory to
+the same without ".sample" and edit it to set the room name, the alias used
+to distinguish this device from another one (e.g. "window", "door", "dev1",
+"big", "behind tv" etc), the address of the MQTT server, and the network
+configuration :
+
+  python tools/luatool.py $PORT -c -f conf/netconf.lua -t netconf.lua
+  python tools/luatool.py $PORT -c -f conf/sysconf.lua -t sysconf.lua
+
+From this point the device is accessible over telnet if it is rebooted. It's
+even possible to continue the flashing process by changing the PORT setting to
+use the IP address.
+
+The application comes with a config file which it is recommended to keep in
+plain text for easier reconfiguration. The application will be called
+"appli.lua" and can be compiled :
+
+  python tools/luatool.py $PORT    -f code/heat-cfg.lua -t heat-cfg.lua
+  python tools/luatool.py $PORT -c -f code/heat.lua -t appli.lua
+
+Warning, do not compile init.lua, or dofile() will not work anymore at boot!
+
+It is important to note the chipid and the telnet password by issuing this
+after rebooting from the serial console, and keeping a copy of its output :
+
+  s=     "   node.chipid()     = " .. node.chipid() .. string.format(" (%x)",node.chipid())
+  s=s.."\n   node.flashid()    = " .. node.flashid() .. "\n   node.flashsize()  = " .. node.flashsize()
+  s=s.."\n   wifi.sta.getmac() = " .. wifi.sta.getmac() .. "\n   wifi.ap.getmac()  = " .. wifi.ap.getmac()
+  s=s.."\n   wifi.sta.getip()  = " .. wifi.sta.getip() .. "\n   passwd            = " .. telnet_passwd
+  print(s)
