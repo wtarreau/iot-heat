@@ -14,6 +14,7 @@ EVENING_TIME=1700
 BED_TIME=2300
 VERBOSE=
 DAEMON=
+EMAIL=
 
 curr_state=
 
@@ -26,6 +27,7 @@ usage() {
 	echo "  -p <port>  : set MQTT port [$MQTT_PORT]"
 	echo "  -d <dir>   : set MQTT directory tree [$MQTT_TREE]"
 	echo "  -t <topic> : set the root MQTT topic [$MQTT_TOPIC]"
+	echo "  -m <email> : email this address when stopping on error"
 	echo "  -D         : fork in the background"
 	echo "  -v         : show all received MQTT messages"
 	echo "  --help     : show this help and exit"
@@ -155,6 +157,7 @@ while [ $# -gt 0 ]; do
 		"-p") MQTT_PORT="$2"; shift ;;
 		"-d") MQTT_TREE="$2"; shift ;;
 		"-t") MQTT_TOPIC="$2"; shift ;;
+		"-m") EMAIL="$2"; shift ;;
 		"-v") VERBOSE=1 ;;
 		"-D") DAEMON=1 ;;
 		"--help") usage 0 ;;
@@ -178,14 +181,28 @@ fi
 #	exit 1
 #fi
 
-if [ -z "$DAEMON" ]; then
-	while update; do
-		sleep 5
+# run the update loop forever, and possibly send an e-mail on alert
+loop() {
+	local err stop
+
+	err=0; stop=0
+	while [ $stop = 0 -a $err = 0 ]; do
+		if update; then
+			sleep 5 || stop=$?
+		else
+			err=$?
+		fi
 	done
+
+	if [ -n "$EMAIL" ]; then
+		echo "stop=$stop err=$err" | mail -s "mqtt-heating stopped" "$EMAIL"
+	fi
+}
+
+if [ -z "$DAEMON" ]; then
+	loop
 else
 	VERBOSE=
-	while update; do
-		sleep 5
-	done </dev/null >&0 2>&0 &
+	loop </dev/null >&0 2>&0 &
 	disown
 fi
