@@ -146,6 +146,13 @@ heat_mqtt:on("offline", mqtt_disconnect_cb)
 heat_mqtt_reconnect()
 
 tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
+  local led
+  if brd_led then
+    -- flash the led ON in ECO, or OFF in normal
+    led = heat_prof_cur == "ECO"
+    led = (brd_led_inv and not led) or (not brd_led_inv and led)
+    gpio.write(brd_led, led and 1 or 0)
+  end
   heat_read_light()
   heat_read_temp()
   heat_compute_profile()
@@ -160,4 +167,9 @@ tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   if cache_node_room ~= heat_node_room then cache_node_room = heat_pub("/room", heat_node_room) end
   if cache_node_alias ~= heat_node_alias then cache_node_alias = heat_pub("/alias", heat_node_alias) end
   tmr.start(heat_timer_num)
+  if brd_led then
+    led = heat_prof_cur == "ECO"
+    led = (brd_led_inv and not led) or (not brd_led_inv and led)
+    gpio.write(brd_led, led and 0 or 1)
+  end
 end)
