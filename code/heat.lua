@@ -43,8 +43,10 @@ function heat_read_light()
 end
 
 function heat_set_pwm(v)
-  pwm.setup(7,1000,v)
-  pwm.start(7)
+  if brd_pwm then
+    pwm.setup(brd_pwm,1000,v)
+    pwm.start(brd_pwm)
+  end
 end
 
 function heat_light_state()
