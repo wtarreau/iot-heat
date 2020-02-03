@@ -17,8 +17,6 @@ Global variables :
 Global configuration variables
   heat_node_alias     : common name for this device, defaults to heat_mqtt_id
   heat_node_room      : room this device is in, defaults to "home"
-  heat_pwm_day        : pwm value to send during day (learned over MQTT)
-  heat_pwm_night      : pwm value to send during night (learned over MQTT)
   heat_pwm_ECO        : pwm value to send when nobnody' there (learned over MQTT)
   heat_pwm_NORMAL     : pwm value to send when someone's present (learned over MQTT)
   heat_pwm_STRONG     : pwm value to send when someone's naked (learned over MQTT)

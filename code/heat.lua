@@ -6,8 +6,6 @@ heat_mqtt_id=heat_mqtt_id or node.chipid()
 heat_mqtt_port=heat_mqtt_port or 1883
 heat_node_room=heat_node_room or "home"
 heat_node_alias=heat_node_alias or heat_mqtt_id
-heat_pwm_night=heat_pwm_night or 1023
-heat_pwm_day=heat_pwm_day or 1023
 heat_mqtt_state=0
 heat_light_cur=0
 heat_temp_cur=0
@@ -138,9 +136,7 @@ local function mqtt_message_cb(s,t,v)
   if t:sub(1,pfxlen) ~= heat_mqtt_topic .. "/cmd/" .. heat_mqtt_id .. "/" then return end
   if v == nil then return end
 
-  if     name == "pwm_day"   then heat_pwm_day=tonumber(v)
-  elseif name == "pwm_night" then heat_pwm_night=tonumber(v)
-  elseif name == "light_lim" then heat_light_lim=tonumber(v)
+  if name == "light_lim" then heat_light_lim=tonumber(v)
   end
 end
 
