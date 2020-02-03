@@ -60,6 +60,10 @@ The board configuration is required to assign pins :
 
   python tools/luatool.py $PORT -c -f conf/board.lua -t board.lua
 
+For the variant of the board using Pilot Wire and a slightly different wiring:
+
+  python tools/luatool.py $PORT -c -f conf/board-pilot.lua -t board.lua
+
 The network and system configuration needs to be uploaded. For this, it is
 required to copy one of the "*.lua.sample" files from the conf directory to
 the same without ".sample" and edit it to set the room name, the alias used
@@ -78,8 +82,15 @@ The application comes with a config file which it is recommended to keep in
 plain text for easier reconfiguration. The application will be called
 "appli.lua" and can be compiled :
 
-  python tools/luatool.py $PORT    -f conf/heat-cfg.lua -t heat-cfg.lua
   python tools/luatool.py $PORT -c -f code/heat.lua -t appli.lua
+
+And the config:
+
+  python tools/luatool.py $PORT    -f conf/heat-cfg.lua -t cfg/heat-cfg.lua
+
+For the variant of the board using Pilot Wire and on/off PWM:
+
+  python tools/luatool.py $PORT    -f conf/heat-cfg-pilot.lua -t cfg/heat-cfg.lua
 
 Warning, do not compile init.lua, or dofile() will not work anymore at boot!
 
