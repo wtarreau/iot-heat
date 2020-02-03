@@ -20,15 +20,21 @@ if file.exists("cfg/heat-cfg.lua") then dofile("cfg/heat-cfg.lua") end
 
 local cache_light_cur, cache_light_lim, cache_light_state, cache_node_room, cache_node_alias, cache_temp_cur, cache_humi_cur
 
-function heat_read_temp()
+local function heat_read_temp()
   local status, temp, humi
-  status,temp,humi=dht.readxx(4)
-  if status ~= dht.OK then
-    status,temp,humi=dht.readxx(4)
-  end
-  if status == dht.OK then
-    heat_temp_cur=temp
-    heat_humi_cur=humi
+
+  if brd_dht then
+    status,temp,humi=dht.readxx(brd_dht)
+    if status ~= dht.OK or temp < -40 or temp > 80 then
+      status,temp,humi=dht.readxx(brd_dht)
+    end
+    if status ~= dht.OK or temp < -40 or temp > 80 then
+      status,temp,humi=dht.readxx(brd_dht)
+    end
+    if status == dht.OK and temp >= -40 and temp <= 80 then
+      heat_temp_cur=temp
+      heat_humi_cur=humi
+    end
   end
 end
 
