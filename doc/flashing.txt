@@ -78,7 +78,7 @@ The application comes with a config file which it is recommended to keep in
 plain text for easier reconfiguration. The application will be called
 "appli.lua" and can be compiled :
 
-  python tools/luatool.py $PORT    -f code/heat-cfg.lua -t heat-cfg.lua
+  python tools/luatool.py $PORT    -f conf/heat-cfg.lua -t heat-cfg.lua
   python tools/luatool.py $PORT -c -f code/heat.lua -t appli.lua
 
 Warning, do not compile init.lua, or dofile() will not work anymore at boot!
