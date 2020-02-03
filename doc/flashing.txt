@@ -42,6 +42,7 @@ location where the iot-core package was extracted, and "tools" is a symlink to
 the luatool repository (https://github.com/4refr0nt/luatool) :
 
   python tools/luatool.py $PORT    -f core/boot/init.lua
+  python tools/luatool.py $PORT -c -f core/boot/start.lua     ## only if exists
   python tools/luatool.py $PORT -c -f core/boot/nodemcu.lua
   python tools/luatool.py $PORT -c -f core/boot/socket.lua
   python tools/luatool.py $PORT -c -f core/boot/netsetup.lua
