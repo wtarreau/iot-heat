@@ -58,7 +58,7 @@ the luatool repository (https://github.com/4refr0nt/luatool) :
 
 The board configuration is required to assign pins :
 
-  python tools/luatool.py $PORT -c -f code/board.lua -t board.lua
+  python tools/luatool.py $PORT -c -f conf/board.lua -t board.lua
 
 The network and system configuration needs to be uploaded. For this, it is
 required to copy one of the "*.lua.sample" files from the conf directory to
