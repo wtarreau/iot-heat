@@ -42,10 +42,16 @@ function heat_read_light()
   heat_light_cur=adc.read(0)
 end
 
-function heat_set_pwm(v)
+local function heat_setup_pwm()
   if brd_pwm then
-    pwm.setup(brd_pwm,1000,v)
+    pwm.setup(brd_pwm,1000,1023)
     pwm.start(brd_pwm)
+  end
+end
+
+function heat_write_pwm(v)
+  if brd_pwm then
+    pwm.setduty(brd_pwm,v)
   end
 end
 
@@ -138,6 +144,8 @@ local function mqtt_message_cb(s,t,v)
   end
 end
 
+heat_setup_pwm()
+
 heat_mqtt=mqtt.Client((heat_mqtt_idpfx or "") .. heat_mqtt_id, 10, nil, nil)
 heat_mqtt:lwt(heat_mqtt_topic .. "/sts/" .. heat_mqtt_id .. "/online", "", 0, 1)
 heat_mqtt:on("message", mqtt_message_cb)
@@ -156,7 +164,7 @@ tmr.alarm(heat_timer_num,heat_timer_int,tmr.ALARM_SEMI,function()
   heat_read_light()
   heat_read_temp()
   heat_compute_profile()
-  heat_set_pwm(heat_compute_pwm())
+  heat_write_pwm(heat_compute_pwm())
 
   if cache_light_cur ~= heat_light_cur then cache_light_cur = heat_pub("/light_cur", heat_light_cur) end
   if cache_light_lim ~= heat_light_lim then cache_light_lim = heat_pub("/light_lim", heat_light_lim) end
