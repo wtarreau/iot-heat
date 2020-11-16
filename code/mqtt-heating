@@ -88,6 +88,12 @@ update() {
 				state=MORNING
 			elif [ -e /tmp/returning ]; then
 				state=BACK
+			elif [ $light != 0 ] && [ $tod -ge $BED_TIME -o $tod -lt $PREHEAT_TIME ]; then
+				state=TOBED
+			elif [ $light != 0 ] && [ $tod -ge $EVENING_TIME ]; then
+				state=EVENING
+			elif [ $light != 0 ]; then
+				state=ATHOME
 			fi
 		elif [ "$state" = WAKEUP ]; then
 			rm -f /tmp/returning
